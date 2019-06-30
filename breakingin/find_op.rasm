@@ -1,0 +1,20 @@
+ip: ipstart
+opaddr: btop
+temp1: 0
+0
+0
+0
+0
+0
+
+const0: 0
+const1: 1
+const4: 4
+
+ipstart:
+btop:
+0xABABABAB temp1 temp1 temp1
+//self modifying
+add const1 btop btop
+//loop
+sub opaddr const4 ip

